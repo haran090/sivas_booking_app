@@ -8,6 +8,7 @@ library(shiny)
 library(shinyjs)
 library(RMySQL)
 library(DT)
+library(stringr)
 
 #####################################################################################################################################################################################################
 #####################################################################################################################################################################################################
@@ -71,7 +72,19 @@ loadData <- function() {
     dbDisconnect(db)
     data
 }
+#####################################################################################################################################################################################################
+##Check if input is gmail id
 
+valGmail <- function(x){
+    return(stringr::str_detect(x, '^[a-z0-9](\\.?[a-z0-9]){5,}@g(oogle)?mail\\.com$' ))
+}
+
+#####################################################################################################################################################################################################
+##Check if 10 digit mobile number
+
+valMobile <- function(x){
+    return(stringr::str_detect(x, '^[0-9]{10}$' ))
+}
 
 
 #####################################################################################################################################################################################################
@@ -91,6 +104,7 @@ shinyApp(
                     helpText("You will receive an SMS with link to complete payment. After you complete payment you will receive an invitation on your Google ID"),
                     textInput( inputId =   "name", label = labelMandatory ("Name"), value =  "", placeholder = "Mohammed Ibrahim"),
                     textInput( inputId =   "gmail_id", label = labelMandatory ("Google Mail ID"), value =  "", placeholder = "xxxxx@gmail.com"),
+                    
                     textInput( inputId =   "mobile", label = labelMandatory ("Mobile Number"), value =  "", placeholder = "9895123456"),
                     actionButton("submit", "Request Payment Link", class = "btn-primary")
                  
@@ -141,9 +155,27 @@ shinyApp(
                        logical(1))
             mandatoryFilled <- all(mandatoryFilled)
             
+            #Check if email is gmail id
+            
+            gmailCheck <- valGmail(input$gmail_id)
+            
+            #Check if mobile number is 10 digits
+            
+            mobileCheck <- valMobile(input$mobile)
+            
             # enable/disable the submit button
-            shinyjs::toggleState(id = "submit", condition = mandatoryFilled)
+            shinyjs::toggleState(id = "submit", condition = (mandatoryFilled && gmailCheck && mobileCheck))
         })
+        
+        #Display error message when email is not gmail id
+        
+        output$gmailError <- shiny::reactive({
+                                               shiny::validate(valGmail(input$gmail_id), "ID must end with @gmail.com")
+                                                    
+            
+        })
+        
+        
         # Whenever a field is filled, aggregate all form data
         formData <- reactive({
             data <- sapply(fields, function(x) input[[x]])
