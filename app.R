@@ -9,7 +9,7 @@ library(shinyjs)
 library(RMySQL)
 library(DT)
 library(stringr)
-
+library(DBI)
 #####################################################################################################################################################################################################
 #####################################################################################################################################################################################################
 # Global Variables and functions
@@ -19,9 +19,9 @@ fieldsMandatory <- c("name", "gmail_id", "mobile")
 #####################################################################################################################################################################################################
 # Function that is called by the ui to mark a field as mandatory
 labelMandatory <- function(label) {
-    tagList(
+    shiny::tagList(
         label,
-        span("*", class = "mandatory_star")
+        shiny::span("*", class = "mandatory_star")
     )
 }
 #####################################################################################################################################################################################################
@@ -45,7 +45,7 @@ table <- "appointments"
 
 saveData <- function(data) {
     # Connect to the database
-    db <- dbConnect(MySQL(), dbname = databaseName, host = options()$mysql$host, 
+    db <- DBI::dbConnect(MySQL(), dbname = databaseName, host = options()$mysql$host, 
                     port = options()$mysql$port, user = options()$mysql$user, 
                     password = options()$mysql$password)
     # Construct the update query by looping over the data fields
@@ -56,20 +56,20 @@ saveData <- function(data) {
         paste(data, collapse = "', '")
     )
     # Submit the update query and disconnect
-    dbGetQuery(db, query)
-    dbDisconnect(db)
+    DBI::dbGetQuery(db, query)
+    DBI::dbDisconnect(db)
 }
 
 loadData <- function() {
     # Connect to the database
-    db <- dbConnect(MySQL(), dbname = databaseName, host = options()$mysql$host, 
+    db <- DBI::dbConnect(MySQL(), dbname = databaseName, host = options()$mysql$host, 
                     port = options()$mysql$port, user = options()$mysql$user, 
                     password = options()$mysql$password)
     # Construct the fetching query
     query <- sprintf("SELECT * FROM %s", table)
     # Submit the fetch query and disconnect
-    data <- dbGetQuery(db, query)
-    dbDisconnect(db)
+    data <- DBI::dbGetQuery(db, query)
+    DBI::dbDisconnect(db)
     data
 }
 #####################################################################################################################################################################################################
@@ -90,39 +90,39 @@ valMobile <- function(x){
 #####################################################################################################################################################################################################
 #####################################################################################################################################################################################################
 ##Shiny App
-shinyApp(
-    ui = fluidPage(
+shiny::shinyApp(
+    ui = shiny::fluidPage(
          
             shinyjs::useShinyjs(),
             shinyjs::inlineCSS(appCSS),
             
         
-            titlePanel("Book a Virtual Appointment with Dr. Sivaramakrishnan"),
-            div(id = "form",
-            sidebarLayout(
-                sidebarPanel(
-                    helpText("You will receive an SMS with link to complete payment. After you complete payment you will receive an invitation on your Google ID"),
-                    textInput( inputId =   "name", label = labelMandatory ("Name"), value =  "", placeholder = "Mohammed Ibrahim"),
-                    textInput( inputId =   "gmail_id", label = labelMandatory ("Google Mail ID"), value =  "", placeholder = "xxxxx@gmail.com"),
+            shiny::titlePanel("Book a Virtual Appointment with Dr. Sivaramakrishnan"),
+            shiny::div(id = "form",
+            shiny::sidebarLayout(
+                shiny::sidebarPanel(
+                    shiny::helpText("You will receive an SMS with link to complete payment. After you complete payment you will receive an invitation on your Google ID"),
+                    shiny::textInput( inputId =   "name", label = labelMandatory ("Name"), value =  "", placeholder = "Mohammed Ibrahim"),
+                    shiny::textInput( inputId =   "gmail_id", label = labelMandatory ("Google Mail ID"), value =  "", placeholder = "xxxxx@gmail.com"),
                     
-                    textInput( inputId =   "mobile", label = labelMandatory ("Mobile Number"), value =  "", placeholder = "9895123456"),
-                    actionButton("submit", "Request Payment Link", class = "btn-primary")
+                    shiny::textInput( inputId =   "mobile", label = labelMandatory ("Mobile Number"), value =  "", placeholder = "9895123456"),
+                    shiny::actionButton("submit", "Request Payment Link", class = "btn-primary")
                  
                  
                 ),
                 
                 
                 
-            mainPanel(
+                shiny::mainPanel(
                     
-                    imageOutput("dadPhoto")
+                    shiny::imageOutput("dadPhoto")
                 ))
             
             
           ),
           shinyjs::hidden( 
-            div(id = "thank_you",
-                h3("Thank you for your response. You will receive a text message with UPI payment link. After completing payment you will receive a meeting link on your Google Mail ID.")
+              shiny::div(id = "thank_you",
+                 shiny::h3("Thank you for your response. You will receive a text message with UPI payment link. After completing payment you will receive a meeting link on your Google Mail ID.")
               
               
                 )
@@ -133,7 +133,7 @@ shinyApp(
     
     server = function(input, output, session) {
         
-       output$dadPhoto <- renderImage({
+       output$dadPhoto <- shiny::renderImage({
                                         
                                         filename <- "dadPhoto.png"
                                         
@@ -145,7 +145,7 @@ shinyApp(
                                     }, deleteFile = FALSE)
         
         
-        observe({
+       shiny::observe({
             # check if all mandatory fields have a value
             mandatoryFilled <-
                 vapply(fieldsMandatory,
@@ -167,23 +167,18 @@ shinyApp(
             shinyjs::toggleState(id = "submit", condition = (mandatoryFilled && gmailCheck && mobileCheck))
         })
         
-        #Display error message when email is not gmail id
-        
-        output$gmailError <- shiny::reactive({
-                                               shiny::validate(valGmail(input$gmail_id), "ID must end with @gmail.com")
-                                                    
-            
-        })
+      
+       
         
         
         # Whenever a field is filled, aggregate all form data
-        formData <- reactive({
+        formData <- shiny::reactive({
             data <- sapply(fields, function(x) input[[x]])
             data
         })
         
         # When the Submit button is clicked, save the form data
-        observeEvent(input$submit, {
+        shiny::observeEvent(input$submit, {
             saveData(formData())
             shinyjs::reset("form")
             shinyjs::hide("form")
