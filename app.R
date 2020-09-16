@@ -10,6 +10,7 @@ library(RMySQL)
 library(DT)
 library(stringr)
 library(DBI)
+library(reticulate)
 #####################################################################################################################################################################################################
 #####################################################################################################################################################################################################
 # Global Variables and functions
@@ -88,11 +89,17 @@ valMobile <- function(x){
 
 
 #####################################################################################################################################################################################################
+#Sourcing python script and ensure dependencies exist; this makes createLink() and sendSMS available in the environment
+
+reticulate::source_python("setu.py")
+
+
+
 #####################################################################################################################################################################################################
 ##Shiny App
 shiny::shinyApp(
     ui = shiny::fluidPage(
-         
+         #Landing Page
             shinyjs::useShinyjs(),
             shinyjs::inlineCSS(appCSS),
             
@@ -120,10 +127,14 @@ shiny::shinyApp(
             
             
           ),
+          #Link_page
           shinyjs::hidden( 
-              shiny::div(id = "thank_you",
-                 shiny::h3("Thank you for your response. You will receive a text message with UPI payment link. After completing payment you will receive a meeting link on your Google Mail ID.")
-              
+              shiny::div(id = "link_page",
+                 shiny::h3("Thank you for your response. You can complete payment through the link below OR the link in the SMS."),
+                 shiny::conditionalPanel(
+                              condition = "input.submit == true",
+                              uiOutput("payment_url")
+                 )
               
                 )
             ) 
@@ -177,14 +188,49 @@ shiny::shinyApp(
             data
         })
         
+        #Creating dummy variable for display in the UI
+        
+        
+        
+        
         # When the Submit button is clicked, save the form data
         shiny::observeEvent(input$submit, {
+            ##Writing entered data to the db
             saveData(formData())
+           
+            ##Resetting the form
             shinyjs::reset("form")
+          
+            ##Hiding the form
             shinyjs::hide("form")
-            shinyjs::show("thank_you")
+          
+            ##Calling createLink to create a payment link 
+            link_details <- createLink()
+            
+            ##Parsing the contents of the list returned by createLink function
+            payment_url <- link_details$url
+            bill_id  <- link_details$billID
+            
+            ##Storing upi_link as an output object
+            
+            ###Creating a hyperlink text for display in HTML
+            payment_link_url <- a("Click Here to Pay", href = payment_url)
+            
+            ##Creating an output object to display
+            
+            output$payment_url <- renderUI({
+              tagList(payment_link_url)
+            })
+            
+            #Send SMS with link details
+            
+            sendSMS(as.character(input$mobile), as.character(payment_url))
+            
+            
+            ##Show link_page
+            shinyjs::show("link_page")
         })
         
-    
+
     }
 )
